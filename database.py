@@ -38,8 +38,21 @@ class Database:
         self.cursor.execute(insert_query, record_to_insert)
         self.connection.commit()
         count = self.cursor.rowcount
-        print(count, "Record inserted successfully into covid table")
+        #print(count, "Record inserted successfully into covid table")
+    
+    def get_news(self, sources, start_idx, count):
+        select_Query = "select * from covid where news_source is %s"
+        self.cursor.execute(select_Query, (sources,))
+        news_records = cursor.fetchall()
+        return news_records
 
-database = Database()
-new_article = News("First", "second", "Third", datetime.datetime.now())
-database.insert_news(new_article)
+    def get_all_source_news(self, start_idx, count):
+        select_Query = "SELECT * from covid ORDER BY publish_time DESC LIMIT %s OFFSET %s"
+        self.cursor.execute(select_Query, (count, start_idx))
+        news_records = self.cursor.fetchall()
+        return news_records
+    
+if __name__ == "__main__":
+    database = Database()
+    new_article = News("First", "second", "Third", datetime.datetime.now())
+    database.insert_news(new_article)
