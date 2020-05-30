@@ -35,9 +35,12 @@ class Database:
                             news.news_content, \
                             news.publish_time, \
                             news.image_source)
-        self.cursor.execute(insert_query, record_to_insert)
-        self.connection.commit()
-        count = self.cursor.rowcount
+        try:
+            self.cursor.execute(insert_query, record_to_insert)
+            self.connection.commit()
+            count = self.cursor.rowcount
+        except:
+            print("Insert failed")
         #print(count, "Record inserted successfully into covid table")
     
     def get_news(self, sources, start_idx, count):

@@ -23,7 +23,7 @@ def get_news(db, start_idx, count):
     news_record = db.get_all_source_news(start_idx, count)
     return news_record
 
-update_database(news_worker, covid_database)
+#update_database(news_worker, covid_database)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
