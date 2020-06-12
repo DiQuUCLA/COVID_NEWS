@@ -36,21 +36,28 @@ class Database:
                             news.publish_time, \
                             news.image_source)
         try:
-            self.cursor.execute(insert_query, record_to_insert)
-            self.connection.commit()
-            count = self.cursor.rowcount
+            if news.news_source and news.news_title and news.news_content:
+                self.cursor.execute(insert_query, record_to_insert)
+                self.connection.commit()
+                count = self.cursor.rowcount
+        except psycopg2.DatabaseError as error:
+            self.connection.rollback()
         except:
-            print("Insert failed")
+            print("Insert failed: {}".format(record_to_insert))
         #print(count, "Record inserted successfully into covid table")
     
     def get_news(self, sources, start_idx, count):
-        select_Query = "select * from covid where news_source is %s"
-        self.cursor.execute(select_Query, (sources,))
-        news_records = cursor.fetchall()
-        return news_records
+        select_Query = "select distinct * from covid where news_source is %s"
+        try:
+            self.cursor.execute(select_Query, (sources,))
+            news_records = cursor.fetchall()
+            return news_records
+        except psycopg2.DatabaseError as error:
+            self.connection.rollback()
+            return "Server Error"
 
     def get_all_source_news(self, start_idx, count):
-        select_Query = "SELECT * from covid ORDER BY publish_time DESC LIMIT %s OFFSET %s"
+        select_Query = "SELECT distinct * from covid ORDER BY publish_time DESC LIMIT %s OFFSET %s"
         self.cursor.execute(select_Query, (count, start_idx))
         news_records = self.cursor.fetchall()
         return news_records

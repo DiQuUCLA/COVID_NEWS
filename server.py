@@ -2,6 +2,7 @@ import socket
 import sys
 import datetime
 import math
+import threading
 
 from database import Database
 from Grab_Data import NewsTransmitter 
@@ -10,7 +11,7 @@ api_key = 'eb5d9304e7704306aac0500a3cf39ba8'
 source_domains = ["bbc.com", "wsj.com", "nytimes.com"]
 now_time = datetime.datetime.now().replace(microsecond=0)
 
-news_worker = NewsTransmitter(source_domains, api_key, init_date="2020-05-20")
+news_worker = NewsTransmitter(source_domains, api_key, init_date="2020-06-01")
 covid_database = Database()
 
 def update_database(news_worker, db):
@@ -35,21 +36,36 @@ sock.bind(server_addr)
 
 sock.listen(1)
 
-def handle_request(query):
+def handle_request(query, conn):
     request = process_request(query)
     new_time = datetime.datetime.now().replace(microsecond=0)
     time_difference = (new_time - now_time)
     if time_difference.total_seconds() > 300:
         update_database(news_worker, covid_database)
     news_list = get_news(covid_database, request["page"] * request["number"], request["number"])
-    json_news_list = []
-    for news in news_list:
-        json_news = dict(zip(["source", "title", "description", "publish_time", "image_url"], news))
-        json_news_list.append(str(json_news))
-    return "\n".join(json_news_list)
+    if news_list == "Server Error":
+        conn.sendall("Server Error".encode('utf-8'))
+        conn.close()
+    else:
+        json_news_list = []
+        for news in news_list:
+            json_news = dict(zip(["source", "title", "description", "publish_time", "image_url"], news))
+            #print(json_news)
+            json_news["publish_time"] = datetime.datetime.timestamp(json_news["publish_time"])
+            json_news_list.append(str(json_news))
+        respond = "\n".join(json_news_list)
+        conn.sendall(respond.encode('utf-8'))
+        print("\n Send Response \n{}\n".format(respond))
+        conn.close()
 
 def process_request(queries):
-    query_list = queries.split("&")
+    queries = queries.split("\n\n")
+    if len(queries) > 1:
+        query_string = queries[1]
+    else:
+        query_string = queries[0]
+    print(query_string)
+    query_list = query_string.split("&")
     request = {}
     for query in query_list:
         split_query = query.split("=")
@@ -68,17 +84,20 @@ while True:
     connection, client_addr = sock.accept()
 
     try:
+    #if(True):
         print("Receive Connection from", client_addr)
         
-        complete_data = ""
+        complete_data = "".encode("utf-8")
         while True:
-            data = connection.recv(16).decode("utf-8")
+            data = connection.recv(16)#.decode("utf-8")
             complete_data += data
             print("Received {}".format(data))
             if len(data) < 16:
                 print("Data finished from {}".format(client_addr))
                 break
-        respond = handle_request(complete_data)
-        connection.sendall(respond.encode('utf-8'))
-    finally:
-        connection.close()
+        complete_data = complete_data.decode("utf-8")
+        handle_request(complete_data, connection)
+    except:
+        e = sys.exc_info()[0]
+        print("Server Error: {}".format(e))
+
