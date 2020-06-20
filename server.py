@@ -18,9 +18,9 @@ def clean_news(news_text):
         news_text = "".join(text_list)
     return news_text
 
-tfidf_vect_ngram = pickle.load(open("../covid_clf/Project_Update_2/Model/tfidf", 'rb'))
+tfidf_vect_ngram = pickle.load(open("./tfidf", 'rb'))
  
-clf = pickle.load(open("../covid_clf/Project_Update_2/Model/RFClf", 'rb'))
+clf = pickle.load(open("./RFClf", 'rb'))
 
 api_key = 'eb5d9304e7704306aac0500a3cf39ba8'
 source_domains = ["bbc.com", "wsj.com", "nytimes.com"]
