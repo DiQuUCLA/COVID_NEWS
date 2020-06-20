@@ -3,9 +3,24 @@ import sys
 import datetime
 import math
 import threading
+import json
+import pickle
 
 from database import Database
 from Grab_Data import NewsTransmitter 
+from Collect_Content import get_content
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble import RandomForestClassifier
+
+def clean_news(news_text):
+    for stop_tag in ["<li>", "</li>", "<ol>"]:
+        text_list = news_text.split(stop_tag)
+        news_text = "".join(text_list)
+    return news_text
+
+tfidf_vect_ngram = pickle.load(open("../covid_clf/Project_Update_2/Model/tfidf", 'rb'))
+ 
+clf = pickle.load(open("../covid_clf/Project_Update_2/Model/RFClf", 'rb'))
 
 api_key = 'eb5d9304e7704306aac0500a3cf39ba8'
 source_domains = ["bbc.com", "wsj.com", "nytimes.com"]
@@ -17,8 +32,14 @@ covid_database = Database()
 def update_database(news_worker, db):
     news_list = news_worker.get_all_domain_news()
     for domain in news_list:
+        for news in news_list[domain]:
+            content = get_content(news.url)
+            if content is None or len(content) == 0:
+                content = [clean_news(news.news_content)]
+            X = tfidf_vect_ngram.transform(content)
+            news.score = float(clf.predict_proba(X)[0,1])
         db.insert_news_list(news_list[domain])
-        #print("update {} news from {} to database".format(len(news_list), domain))
+        print("update {} news from {} to database".format(len(news_list[domain]), domain))
 
 def get_news(db, start_idx, count):
     news_record = db.get_all_source_news(start_idx, count)
@@ -40,7 +61,7 @@ def handle_request(query, conn):
     request = process_request(query)
     new_time = datetime.datetime.now().replace(microsecond=0)
     time_difference = (new_time - now_time)
-    if time_difference.total_seconds() > 300:
+    if time_difference.total_seconds() > 1800:
         update_database(news_worker, covid_database)
     news_list = get_news(covid_database, request["page"] * request["number"], request["number"])
     if news_list == "Server Error":
@@ -49,12 +70,15 @@ def handle_request(query, conn):
     else:
         json_news_list = []
         for news in news_list:
-            json_news = dict(zip(["source", "title", "description", "publish_time", "image_url"], news))
-            #print(json_news)
+            json_news = dict(zip(["source", "title", "description", "publish_time", "image_url", "url", "score"], news))
+            
             json_news["publish_time"] = datetime.datetime.timestamp(json_news["publish_time"])
-            json_news_list.append(str(json_news))
-        respond = "\n".join(json_news_list)
-        conn.sendall(respond.encode('utf-8'))
+            del json_news["description"]
+            #del json_news["score"]
+            json_news_list.append(json_news)
+        data_json = {"data": json_news_list}
+        respond = json.dumps(data_json)
+        conn.sendall(respond.encode('ascii'))
         print("\n Send Response \n{}\n".format(respond))
         conn.close()
 
@@ -89,10 +113,10 @@ while True:
         
         complete_data = "".encode("utf-8")
         while True:
-            data = connection.recv(16)#.decode("utf-8")
+            data = connection.recv(32)#.decode("utf-8")
             complete_data += data
             print("Received {}".format(data))
-            if len(data) < 16:
+            if len(data) < 32:
                 print("Data finished from {}".format(client_addr))
                 break
         complete_data = complete_data.decode("utf-8")
@@ -100,4 +124,5 @@ while True:
     except:
         e = sys.exc_info()[0]
         print("Server Error: {}".format(e))
+        handle_request("", connection)
 

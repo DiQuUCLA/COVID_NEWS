@@ -60,7 +60,7 @@ class NewsTransmitter:
                 domain_result.extend(page_result)
         domain_news_result = []
         for r in domain_result:
-            news_r = News(domain, r["title"], r["description"], r["publishedAt"], r["urlToImage"])
+            news_r = News(domain, r["title"], r["description"], r["publishedAt"], r["urlToImage"], r["url"])
             domain_news_result.append(news_r)
 
         return domain_news_result
@@ -88,11 +88,11 @@ if __name__ =='__main__':
 
 
     api_key='eb5d9304e7704306aac0500a3cf39ba8'
-    transmitter= NewsTransmitter(news_domains, api_key, init_date="2020-05-23")
+    transmitter= NewsTransmitter(news_domains, api_key, init_date="2020-06-16")
     top_headlines = transmitter.get_domain_news(transmitter.source[0], now_time)
 
     print(len(top_headlines))
     #print(top_headlines['totalResults'])
-    for article in top_headlines:
-        #print(article["title"])
-        print(article.news_title)
+
+    for article in top_headlines[:3]:
+        print(article["title"])

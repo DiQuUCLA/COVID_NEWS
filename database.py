@@ -28,22 +28,27 @@ class Database:
                                                     news_title,
                                                     news_content, 
                                                     publish_time,
-                                                    image_source)
-                                                VALUES (%s, %s, %s, %s, %s)"""
+                                                    image_source,
+                                                    url,
+                                                    score)
+                                                VALUES (%s, %s, %s, %s, %s, %s, %s)"""
         record_to_insert = (news.news_source, \
                             news.news_title, \
                             news.news_content, \
                             news.publish_time, \
-                            news.image_source)
-        try:
+                            news.image_source, \
+                            news.url, \
+                            news.score)
+        #try:
+        if True:
             if news.news_source and news.news_title and news.news_content:
                 self.cursor.execute(insert_query, record_to_insert)
                 self.connection.commit()
                 count = self.cursor.rowcount
-        except psycopg2.DatabaseError as error:
-            self.connection.rollback()
-        except:
-            print("Insert failed: {}".format(record_to_insert))
+        #except psycopg2.DatabaseError as error:
+        #    self.connection.rollback()
+        
+            #print("Insert failed: {}".format(record_to_insert))
         #print(count, "Record inserted successfully into covid table")
     
     def get_news(self, sources, start_idx, count):
